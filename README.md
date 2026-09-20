@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MallWay
 
-## Getting Started
+### Smart Indoor Navigation for Multi-Floor Malls
 
-First, run the development server:
+> Navigate. Explore. Never Get Lost.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+MallWay is a smart indoor navigation web application designed to help visitors navigate multi-floor shopping malls.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The prototype is developed using Royal Plaza Surabaya as the demonstration environment.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Overview
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Finding a specific store or facility inside a large multi-floor mall can be difficult, especially for first-time visitors.
 
-## Learn More
+MallWay provides an interactive indoor navigation experience that allows users to:
 
-To learn more about Next.js, take a look at the following resources:
+- Search for stores and facilities
+- Explore different mall floors
+- View destinations directly on floor plans
+- Start indoor navigation
+- Navigate across multiple floors
+- Use accessible route preferences
+- Ask the MallWay Assistant for navigation help
+- Save parking locations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1. Interactive Indoor Map
 
-## Deploy on Vercel
+Users can explore Royal Plaza floor plans across:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Lower Ground (LG)
+- Ground Floor (G)
+- Upper Ground (UG)
+- Floor 1
+- Floor 2
+- Floor 3
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 2. Destination Search
+
+Users can search for stores, food outlets, entertainment venues, and other destinations.
+
+### 3. Indoor Navigation
+
+MallWay uses a navigation graph and A* pathfinding algorithm to calculate routes between navigation nodes.
+
+### 4. Multi-Floor Navigation
+
+The navigation system supports movement between floors using vertical connectors such as elevators.
+
+### 5. Accessible Route
+
+Users can enable an accessible navigation preference designed to prioritize accessible vertical connections.
+
+### 6. AI Assistant
+
+The MallWay Assistant provides a conversational interface for common navigation requests.
+
+Example:
+
+> Take me to Royal 21
+
+or:
+
+> Take me there without stairs
+
+### 7. Parking Memory
+
+Users can save their parking location so they can remember where their vehicle is parked.
+
+## Technology Stack
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- JavaScript
+- GitHub
+- A* Pathfinding Algorithm
+
+## Project Structure
+
+```text
+mallway/
+├── app/
+│   ├── page.tsx
+│   ├── layout.tsx
+│   └── globals.css
+│
+├── data/
+│   ├── pois.ts
+│   └── nodes.ts
+│
+├── public/
+│   └── maps/
+│       ├── lg.jpg
+│       ├── g.jpg
+│       ├── ug.jpg
+│       ├── floor1.jpg
+│       ├── floor2.jpg
+│       └── floor3.jpg
+│
+├── package.json
+├── package-lock.json
+└── README.md
