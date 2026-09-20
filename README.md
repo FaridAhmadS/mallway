@@ -103,3 +103,81 @@ mallway/
 ├── package.json
 ├── package-lock.json
 └── README.md
+
+Installation
+
+Clone this repository:
+
+git clone https://github.com/FaridAhmadS/mallway.git
+
+Move into the project directory:
+
+cd mallway
+
+Install dependencies:
+
+npm install
+
+Run the development server:
+
+npm run dev
+
+Open:
+
+http://localhost:3000
+Navigation Algorithm
+
+MallWay uses the A* pathfinding algorithm to calculate navigation paths through a graph of indoor navigation nodes.
+
+Each node represents a navigation point such as:
+
+Entrance
+Corridor
+Elevator
+Escalator
+
+The graph connects these nodes and allows MallWay to calculate a path from the user's starting position to the selected destination.
+
+Indoor Positioning Concept
+
+The current competition prototype uses simulated indoor positioning and navigation nodes.
+
+For future real-world implementation, MallWay can integrate hybrid indoor positioning technologies such as:
+
+BLE Beacons
+QR Checkpoints
+Smartphone Sensors
+Wi-Fi Positioning
+GPS for outdoor-to-indoor transition
+
+This approach allows MallWay to evolve from a prototype into a real indoor navigation system.
+
+Future Development
+
+Potential improvements include:
+
+Real-time indoor positioning
+BLE beacon integration
+More accurate map calibration
+Dynamic route recalculation
+Real AI navigation assistant
+Real-time mall information
+Emergency route navigation
+Crowd-aware routing
+Voice navigation
+More detailed accessibility mapping
+Project
+
+MallWay: Smart Indoor Navigation for Multi-Floor Malls
+
+Developed for:
+
+International Web Technology Competition 2026
+
+Part of:
+
+GAYATAMA 5
+
+License
+
+This project is developed for educational and competition purposes.
