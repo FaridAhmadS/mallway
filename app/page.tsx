@@ -24,26 +24,150 @@ const mapImages: Record<string, string> = {
   "3": "/maps/floor3.jpg",
 }
 
-function aStar(startId: string, goalId: string) {
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]))
+type NavNode = {
+  id: string
+  floor: string
+  type: string
+  x: number
+  y: number
+  connections: string[]
+}
 
+const floorHubCoords: Record<string, { x: number; y: number }> = {
+  G: { x: 80, y: 52 },
+  UG: { x: 80, y: 52 },
+}
+
+function buildNavigationGraph(
+  destination: (typeof pois)[number]
+): NavNode[] {
+  const graph: NavNode[] = nodes.map((node) => ({
+    ...node,
+    connections: [...node.connections],
+  }))
+
+  const connect = (a: string, b: string) => {
+    const nodeA = graph.find((node) => node.id === a)
+    const nodeB = graph.find((node) => node.id === b)
+
+    if (!nodeA || !nodeB) return
+
+    if (!nodeA.connections.includes(b)) {
+      nodeA.connections.push(b)
+    }
+
+    if (!nodeB.connections.includes(a)) {
+      nodeB.connections.push(a)
+    }
+  }
+
+  // Add missing vertical connectors for Ground and Upper Ground.
+  graph.push(
+    {
+      id: "G-ELEV-01",
+      floor: "G",
+      type: "Elevator",
+      x: floorHubCoords.G.x,
+      y: floorHubCoords.G.y,
+      connections: [],
+    },
+    {
+      id: "UG-ELEV-01",
+      floor: "UG",
+      type: "Elevator",
+      x: floorHubCoords.UG.x,
+      y: floorHubCoords.UG.y,
+      connections: [],
+    }
+  )
+
+  // Build one continuous vertical route:
+  // LG -> G -> UG -> Floor 1 -> Floor 2 -> Floor 3.
+  connect("LG-ELEV-01", "G-ELEV-01")
+  connect("G-ELEV-01", "UG-ELEV-01")
+  connect("UG-ELEV-01", "F1-ELEV-01")
+
+  // Every POI becomes a real A* destination node.
+  const destinationId = `POI-${destination.id}`
+
+  const destinationNode: NavNode = {
+    id: destinationId,
+    floor: destination.floor,
+    type: "Destination",
+    x: destination.x,
+    y: destination.y,
+    connections: [],
+  }
+
+  graph.push(destinationNode)
+
+  // Connect the destination to the closest navigation node on its floor.
+  const sameFloorNodes = graph.filter(
+    (node) =>
+      node.floor === destination.floor &&
+      node.id !== destinationId
+  )
+
+  if (sameFloorNodes.length > 0) {
+    const nearestNode = sameFloorNodes.reduce((nearest, node) => {
+      const nearestDistance = Math.hypot(
+        nearest.x - destination.x,
+        nearest.y - destination.y
+      )
+
+      const currentDistance = Math.hypot(
+        node.x - destination.x,
+        node.y - destination.y
+      )
+
+      return currentDistance < nearestDistance ? node : nearest
+    })
+
+    connect(destinationId, nearestNode.id)
+  }
+
+  return graph
+}
+
+function aStar(
+  graph: NavNode[],
+  startId: string,
+  goalId: string,
+  accessible = false
+): string[] {
+  const nodeMap = new Map(graph.map((node) => [node.id, node]))
   const openSet = [startId]
   const cameFrom = new Map<string, string>()
-
   const gScore = new Map<string, number>()
   const fScore = new Map<string, number>()
 
-  nodes.forEach((node) => {
+  graph.forEach((node) => {
     gScore.set(node.id, Infinity)
     fScore.set(node.id, Infinity)
   })
 
+  const start = nodeMap.get(startId)
+  const goal = nodeMap.get(goalId)
+
+  if (!start || !goal) return []
+
+  const heuristic = (node: NavNode) => {
+    const floorPenalty = node.floor === goal.floor ? 0 : 15
+
+    return (
+      Math.hypot(node.x - goal.x, node.y - goal.y) +
+      floorPenalty
+    )
+  }
+
   gScore.set(startId, 0)
-  fScore.set(startId, 0)
+  fScore.set(startId, heuristic(start))
 
   while (openSet.length > 0) {
     openSet.sort(
-      (a, b) => (fScore.get(a) ?? Infinity) - (fScore.get(b) ?? Infinity)
+      (a, b) =>
+        (fScore.get(a) ?? Infinity) -
+        (fScore.get(b) ?? Infinity)
     )
 
     const current = openSet.shift()
@@ -71,18 +195,35 @@ function aStar(startId: string, goalId: string) {
 
       if (!neighbor) continue
 
-      const distance = Math.sqrt(
-        Math.pow(currentData.x - neighbor.x, 2) +
-          Math.pow(currentData.y - neighbor.y, 2)
-      )
+      const baseDistance =
+        currentData.floor === neighbor.floor
+          ? Math.hypot(
+              currentData.x - neighbor.x,
+              currentData.y - neighbor.y
+            )
+          : 20
+
+      // If future node data contains stairs, accessible mode avoids them.
+      const accessibilityPenalty =
+        accessible && neighbor.type.toLowerCase().includes("stair")
+          ? 10000
+          : 0
 
       const tentativeG =
-        (gScore.get(current) ?? Infinity) + distance
+        (gScore.get(current) ?? Infinity) +
+        baseDistance +
+        accessibilityPenalty
 
-      if (tentativeG < (gScore.get(neighborId) ?? Infinity)) {
+      if (
+        tentativeG <
+        (gScore.get(neighborId) ?? Infinity)
+      ) {
         cameFrom.set(neighborId, current)
         gScore.set(neighborId, tentativeG)
-        fScore.set(neighborId, tentativeG)
+        fScore.set(
+          neighborId,
+          tentativeG + heuristic(neighbor)
+        )
 
         if (!openSet.includes(neighborId)) {
           openSet.push(neighborId)
@@ -131,26 +272,25 @@ export default function Home() {
   const selectedOnCurrentFloor =
     selectedPOI?.floor === floor ? selectedPOI : null
 
+  const navigationGraph = useMemo(() => {
+    if (!selectedPOI) return nodes
+
+    return buildNavigationGraph(selectedPOI)
+  }, [selectedPOI])
+
   const route = useMemo(() => {
     if (!selectedPOI) return []
 
-    const startNode =
-      floor === "LG"
-        ? "LG-ENT-01"
-        : floor === "3"
-          ? "F3-ELEV-01"
-          : "LG-ENT-01"
+    return aStar(
+      navigationGraph,
+      "LG-ENT-01",
+      `POI-${selectedPOI.id}`,
+      accessible
+    )
+  }, [selectedPOI, navigationGraph, accessible])
 
-    const goalNode =
-      selectedPOI.id === "F3-001"
-        ? "F3-N02"
-        : selectedPOI.floor === "3"
-          ? "F3-N01"
-          : startNode
-
-    return aStar(startNode, goalNode)
-  }, [selectedPOI, floor])
-
+  // Animate the simulated current position along the A* route.
+  // When the next node is on another floor, automatically switch the map.
   useEffect(() => {
     if (!navigation || route.length === 0) return
 
@@ -161,15 +301,51 @@ export default function Home() {
           return current
         }
 
-        return current + 1
+        const nextIndex = current + 1
+        const nextNode = navigationGraph.find(
+          (node) => node.id === route[nextIndex]
+        )
+
+        if (nextNode) {
+          setFloor((currentFloor) =>
+            currentFloor === nextNode.floor
+              ? currentFloor
+              : nextNode.floor
+          )
+        }
+
+        return nextIndex
       })
     }, 1200)
 
     return () => clearInterval(timer)
-  }, [navigation, route])
+  }, [navigation, route, navigationGraph])
 
   const currentRouteNode =
-    route.length > 0 ? nodes.find((n) => n.id === route[routeIndex]) : null
+    route.length > 0
+      ? navigationGraph.find(
+          (node) => node.id === route[routeIndex]
+        ) ?? null
+      : null
+
+  const visibleRouteNodes = route
+    .map((nodeId) =>
+      navigationGraph.find((node) => node.id === nodeId)
+    )
+    .filter(
+      (node): node is NavNode =>
+        Boolean(node && node.floor === floor)
+    )
+
+  const visibleProgressNodes = route
+    .slice(0, routeIndex + 1)
+    .map((nodeId) =>
+      navigationGraph.find((node) => node.id === nodeId)
+    )
+    .filter(
+      (node): node is NavNode =>
+        Boolean(node && node.floor === floor)
+    )
 
   const handlePOIClick = (poi: (typeof pois)[number]) => {
     setSelectedPOI(poi)
@@ -178,13 +354,17 @@ export default function Home() {
   }
 
   const startNavigation = () => {
-    if (!selectedPOI) return
+    if (!selectedPOI || route.length === 0) return
 
-    setNavigation(true)
     setRouteIndex(0)
+    setNavigation(true)
 
-    if (selectedPOI.floor !== floor) {
-      setFloor(selectedPOI.floor)
+    const firstNode = navigationGraph.find(
+      (node) => node.id === route[0]
+    )
+
+    if (firstNode) {
+      setFloor(firstNode.floor)
     }
   }
 
@@ -413,9 +593,12 @@ export default function Home() {
                 {!navigation ? (
                   <button
                     onClick={startNavigation}
-                    className="mt-4 w-full rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-600"
+                    disabled={route.length === 0}
+                    className="mt-4 w-full rounded-2xl bg-cyan-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Start Navigation →
+                    {route.length > 0
+                      ? "Start Navigation →"
+                      : "Route Unavailable"}
                   </button>
                 ) : (
                   <button
@@ -465,6 +648,12 @@ export default function Home() {
                   Step {Math.min(routeIndex + 1, Math.max(route.length, 1))} of{" "}
                   {Math.max(route.length, 1)}
                 </div>
+
+                {route.length === 0 && (
+                  <div className="mt-3 rounded-2xl bg-red-400/10 p-3 text-xs text-red-300">
+                    Route could not be calculated for this destination.
+                  </div>
+                )}
               </div>
             )}
 
@@ -571,8 +760,47 @@ export default function Home() {
                     )
                   })}
 
+                {/* ROUTE PATH */}
+                {navigation && visibleRouteNodes.length > 1 && (
+                  <svg
+                    className="pointer-events-none absolute inset-0 z-30 h-full w-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {/* Full planned route */}
+                    <polyline
+                      points={visibleRouteNodes
+                        .map((node) => `${node.x},${node.y}`)
+                        .join(" ")}
+                      fill="none"
+                      stroke="#06b6d4"
+                      strokeWidth="1.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+
+                    {/* Route already travelled */}
+                    {visibleProgressNodes.length > 1 && (
+                      <polyline
+                        points={visibleProgressNodes
+                          .map((node) => `${node.x},${node.y}`)
+                          .join(" ")}
+                        fill="none"
+                        stroke="#0f172a"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
+                  </svg>
+                )}
+
                 {/* CURRENT POSITION */}
-                {navigation && currentRouteNode && (
+                {navigation &&
+                  currentRouteNode &&
+                  currentRouteNode.floor === floor && (
                   <div
                     style={{
                       left: `${currentRouteNode.x}%`,
