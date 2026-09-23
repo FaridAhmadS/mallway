@@ -525,13 +525,15 @@ export default function Home() {
               </div>
 
               {/* MAP AREA */}
-              <div className="relative overflow-hidden bg-slate-200">
+              
+               <div className="relative overflow-hidden bg-slate-200">
                 <img
                   src={mapImages[floor]}
                   alt={`Royal Plaza ${floorNames[floor]} floor plan`}
                   className="block h-auto w-full select-none object-contain"
                 />
 
+            
                 {/* POI MARKERS */}
                 {pois
                   .filter((poi) => poi.floor === floor)
