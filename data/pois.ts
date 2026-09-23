@@ -1,3 +1,12 @@
+export type POI = {
+  id: string
+  name: string
+  floor: string
+  type: string
+  x: number
+  y: number
+}
+
 export const pois: POI[] = [
   // LOWER GROUND
   {
