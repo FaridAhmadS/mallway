@@ -235,6 +235,36 @@ function aStar(
   return []
 }
 
+
+function getNavigationInstruction(
+  currentNode: NavNode | null,
+  nextNode: NavNode | null,
+  destination: (typeof pois)[number] | null
+) {
+  if (!currentNode) return "Starting navigation"
+
+  if (currentNode.type === "Destination") {
+    return `You have arrived at ${destination?.name ?? "your destination"}.`
+  }
+
+  if (nextNode && nextNode.floor !== currentNode.floor) {
+    if (nextNode.type === "Elevator") {
+      return `Go to the elevator to continue to Floor ${nextNode.floor}.`
+    }
+    return `Continue to Floor ${nextNode.floor}.`
+  }
+
+  if (currentNode.type === "Elevator") {
+    return `Take the elevator and continue toward ${destination?.name ?? "your destination"}.`
+  }
+
+  if (nextNode?.type === "Destination") {
+    return `Continue to ${destination?.name ?? "your destination"}.`
+  }
+
+  return "Follow the highlighted route."
+}
+
 export default function Home() {
   const [floor, setFloor] = useState("LG")
   const [search, setSearch] = useState("")
@@ -327,6 +357,17 @@ export default function Home() {
           (node) => node.id === route[routeIndex]
         ) ?? null
       : null
+
+  const nextRouteNode =
+    route.length > 0 && routeIndex < route.length - 1
+      ? navigationGraph.find((node) => node.id === route[routeIndex + 1]) ?? null
+      : null
+
+  const navigationInstruction = getNavigationInstruction(
+    currentRouteNode,
+    nextRouteNode,
+    selectedPOI
+  )
 
   const visibleRouteNodes = route
     .map((nodeId) =>
@@ -636,6 +677,15 @@ export default function Home() {
                       ? `Floor ${currentRouteNode.floor}`
                       : ""}
                   </div>
+
+                  <div className="mt-4 rounded-2xl bg-slate-800 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                      Next step
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-white">
+                      {navigationInstruction}
+                    </div>
+                  </div>
                 </div>
 
                 {accessible && (
@@ -719,7 +769,7 @@ export default function Home() {
                 <img
                   src={mapImages[floor]}
                   alt={`Royal Plaza ${floorNames[floor]} floor plan`}
-                  className="block h-auto w-full select-none object-contain"
+                  className="relative z-0 block h-auto w-full select-none object-contain"
                 />
 
             
@@ -764,6 +814,7 @@ export default function Home() {
                 {navigation && visibleRouteNodes.length > 1 && (
                   <svg
                     className="pointer-events-none absolute inset-0 z-30 h-full w-full"
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
                     viewBox="0 0 100 100"
                     preserveAspectRatio="none"
                   >
@@ -774,7 +825,7 @@ export default function Home() {
                         .join(" ")}
                       fill="none"
                       stroke="#06b6d4"
-                      strokeWidth="1.2"
+                      strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       vectorEffect="non-scaling-stroke"
